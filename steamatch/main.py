@@ -5,9 +5,8 @@ import os
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
 
-from modelos.carregador import carregar_dados, calcular_popularidade
+from modelos.carregador import carregar_dados
 from modelos.conteudo import construir_modelo_conteudo
-from modelos.colaborativo import construir_modelo_colaborativo
 from interface.sessao import SessaoUsuario
 from interface.terminal import (
     exibir_boas_vindas,
@@ -24,18 +23,16 @@ MINIMO_JOGOS_DISPONIVEIS = 5
 
 
 def carregar_todos_os_modelos(caminho_dados: str = './dados') -> tuple:
-    """Carrega os CSVs e constrói todos os modelos. Retorna (modelos, sessao)."""
+    """Carrega games.csv e constrói todos os modelos. Retorna (modelos, sessao)."""
     try:
-        df_enriquecido, df_horas, df_compras = carregar_dados(caminho_dados)
+        df_jogos = carregar_dados(caminho_dados)
     except FileNotFoundError as erro:
         console.print(f'\n[bold red]❌ Arquivo não encontrado:[/bold red] {erro}')
         console.print(
-            '[yellow]Verifique se os arquivos steam-200k.csv e steam_games.csv '
-            f'estão em [bold]{caminho_dados}/[/bold][/yellow]\n'
+            '[yellow]Verifique se o arquivo games.csv '
+            f'está em [bold]{caminho_dados}/[/bold][/yellow]\n'
         )
         sys.exit(1)
-
-    df_enriquecido, df_horas, df_compras = calcular_popularidade(df_horas, df_compras, df_enriquecido)
 
     with Progress(
         SpinnerColumn(),
@@ -45,23 +42,18 @@ def carregar_todos_os_modelos(caminho_dados: str = './dados') -> tuple:
         console=console,
         transient=False,
     ) as progresso:
-        tarefa = progresso.add_task('🧠 Construindo modelos...', total=100)
+        tarefa = progresso.add_task('🧠 Construindo modelo TF-IDF...', total=100)
 
-        matriz_sim, indice_jogos = construir_modelo_conteudo(df_enriquecido)
-        progresso.update(tarefa, advance=60)
+        matriz_sim, indice_jogos = construir_modelo_conteudo(df_jogos)
+        progresso.update(tarefa, advance=100)
 
-        matriz_ii, indice_itens = construir_modelo_colaborativo(df_horas)
-        progresso.update(tarefa, advance=40)
-
-    total_jogos = len(df_enriquecido)
+    total_jogos = len(df_jogos)
     console.print(f'✅ Pronto! [bold green]{total_jogos}[/bold green] jogos carregados.\n')
 
     modelos = {
-        'df_enriquecido': df_enriquecido,
-        'matriz_sim':     matriz_sim,
-        'indice_jogos':   indice_jogos,
-        'matriz_ii':      matriz_ii,
-        'indice_itens':   indice_itens,
+        'df_jogos':     df_jogos,
+        'matriz_sim':   matriz_sim,
+        'indice_jogos': indice_jogos,
     }
 
     return modelos, SessaoUsuario()
@@ -69,7 +61,7 @@ def carregar_todos_os_modelos(caminho_dados: str = './dados') -> tuple:
 
 def _jogos_restantes(sessao: SessaoUsuario, modelos: dict) -> int:
     """Retorna a quantidade de jogos ainda não vistos na sessão."""
-    total = len(modelos['df_enriquecido'])
+    total = len(modelos['df_jogos'])
     return total - len(sessao.vistos)
 
 

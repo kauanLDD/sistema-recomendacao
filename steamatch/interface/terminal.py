@@ -88,13 +88,13 @@ def exibir_card_jogo(jogo: dict, sessao) -> str:
     """Exibe o card do jogo no estilo Tinder e retorna 'l', 'd' ou 'q' conforme o input."""
     console.clear()
 
-    nome       = jogo.get('nome', 'Desconhecido')
-    generos    = jogo.get('generos', 'desconhecido')
-    tags_raw   = jogo.get('tags', 'desconhecido')
-    descricao  = _truncar(jogo.get('descricao', ''), 120)
-    total_h    = jogo.get('total_horas', 0)
-    total_u    = jogo.get('total_usuarios_jogaram', 0)
-    motivo     = jogo.get('motivo', '')
+    nome      = jogo.get('nome', 'Desconhecido')
+    generos   = jogo.get('generos', 'desconhecido')
+    tags_raw  = jogo.get('tags', 'desconhecido')
+    descricao = _truncar(jogo.get('descricao', ''), 120)
+    positivas = jogo.get('positivas', 0)
+    total_rev = jogo.get('total_reviews', 0)
+    motivo    = jogo.get('motivo', '')
 
     # Filtra apenas as primeiras 3 tags
     if tags_raw and tags_raw != 'desconhecido':
@@ -108,10 +108,10 @@ def exibir_card_jogo(jogo: dict, sessao) -> str:
     else:
         generos_fmt = generos
 
-    max_horas_referencia = 500_000
-    barra_pop = _barra_progresso_visual(total_h, max_horas_referencia)
-    horas_fmt = _formatar_numero(total_h)
-    usuarios_fmt = _formatar_numero(total_u)
+    max_reviews_referencia = 500_000
+    barra_pop  = _barra_progresso_visual(positivas, max_reviews_referencia)
+    positivas_fmt = _formatar_numero(positivas)
+    total_fmt     = _formatar_numero(total_rev)
 
     conteudo = Text()
     conteudo.append(f'🎮  {nome}\n', style='bold white')
@@ -121,8 +121,8 @@ def exibir_card_jogo(jogo: dict, sessao) -> str:
     conteudo.append('  🔖  Tags    : ', style='yellow')
     conteudo.append(f'{tags_fmt}\n\n', style='white')
     conteudo.append(f'  📝  "{descricao}"\n\n', style='italic dim')
-    conteudo.append(f'  📊  Popularidade  {barra_pop}  {horas_fmt} horas\n', style='cyan')
-    conteudo.append(f'  👥  Jogadores     {usuarios_fmt} usuários na base\n\n', style='cyan')
+    conteudo.append(f'  📊  Popularidade  {barra_pop}  {positivas_fmt} positivas\n', style='cyan')
+    conteudo.append(f'  👥  Avaliações    {total_fmt} reviews totais\n\n', style='cyan')
     conteudo.append('  🤖  Recomendado por: ', style='dim')
     conteudo.append(f'{motivo}\n', style='dim italic')
 
@@ -184,27 +184,23 @@ def exibir_tela_match(sessao, modelos: dict):
     """Exibe a tela de match a cada 5 likes com gêneros favoritos e top 3 recomendações."""
     console.clear()
 
-    df = modelos['df_enriquecido']
+    df = modelos['df_jogos']
     generos_favoritos = sessao.obter_generos_favoritos_de(df)[:2]
 
-    candidatos = sessao.obter_proximo_jogo.__func__  # evitar marcar como visto
     from modelos.baseline import obter_jogos_populares
     from modelos.conteudo import recomendar_por_conteudo
-    from modelos.colaborativo import recomendar_colaborativo
 
     estrategia = sessao.decidir_estrategia()
     excluir = sessao.vistos.copy()
 
     if estrategia == 'popular':
         lista = obter_jogos_populares(df, n=3, excluir_nomes=excluir)
-    elif estrategia == 'conteudo':
+    else:
         lista = recomendar_por_conteudo(
             sessao.curtidos, df,
             modelos['matriz_sim'], modelos['indice_jogos'],
             excluir_nomes=excluir, n=3
         )
-    else:
-        lista = sessao._combinar_hibrido(modelos, excluir)[:3]
 
     medalhas = ['🥇', '🥈', '🥉']
 
@@ -243,14 +239,13 @@ def exibir_resumo_final(sessao, modelos: dict):
     """Exibe estatísticas da sessão, gêneros favoritos e top 5 recomendações finais."""
     console.clear()
 
-    df = modelos['df_enriquecido']
+    df = modelos['df_jogos']
     generos_favoritos = sessao.obter_generos_favoritos_de(df)
     estrategia_final = sessao.decidir_estrategia()
 
     mapa_estrategia = {
         'popular':  'Popularidade (baseline)',
         'conteudo': 'Conteúdo (TF-IDF)',
-        'hibrido':  'Híbrido — Conteúdo 50% + Colaborativo 50%',
     }
     nome_estrategia = mapa_estrategia.get(estrategia_final, estrategia_final)
 
@@ -261,14 +256,12 @@ def exibir_resumo_final(sessao, modelos: dict):
 
     if estrategia_final == 'popular':
         lista_final = obter_jogos_populares(df, n=5, excluir_nomes=excluir)
-    elif estrategia_final == 'conteudo':
+    else:
         lista_final = recomendar_por_conteudo(
             sessao.curtidos, df,
             modelos['matriz_sim'], modelos['indice_jogos'],
             excluir_nomes=excluir, n=5
         )
-    else:
-        lista_final = sessao._combinar_hibrido(modelos, excluir)[:5]
 
     conteudo = Text()
 

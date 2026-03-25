@@ -2,26 +2,18 @@
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import normalize
 
 
-def construir_modelo_conteudo(df_enriquecido):
-    """Constrói a matriz TF-IDF e retorna (matriz_similaridade, indice_jogos)."""
-    df = df_enriquecido.reset_index(drop=True)
+def construir_modelo_conteudo(df_jogos):
+    """Constrói a matriz TF-IDF normalizada. Retorna (matriz_tfidf_norm, indice_jogos).
 
-    def montar_texto(linha):
-        partes = []
-        if linha['generos'] != 'desconhecido':
-            # Gêneros com peso 2x
-            partes.append(linha['generos'])
-            partes.append(linha['generos'])
-        if linha['tags'] != 'desconhecido':
-            partes.append(linha['tags'])
-        if linha['descricao']:
-            partes.append(linha['descricao'])
-        return ' '.join(partes)
+    Não pré-computa a matriz de similaridade completa (O(n²) memória).
+    A similaridade é calculada on-demand via dot product em recomendar_por_conteudo().
+    """
+    df = df_jogos.reset_index(drop=True)
 
-    df['texto_completo'] = df.apply(montar_texto, axis=1)
+    textos = df['conteudo'].fillna('').astype(str).tolist()
 
     vetorizador = TfidfVectorizer(
         max_features=5000,
@@ -29,30 +21,37 @@ def construir_modelo_conteudo(df_enriquecido):
         ngram_range=(1, 2),
         min_df=2,
     )
-    matriz_tfidf = vetorizador.fit_transform(df['texto_completo'])
+    matriz_tfidf = vetorizador.fit_transform(textos)
 
-    matriz_similaridade = cosine_similarity(matriz_tfidf, dense_output=True)
+    # Normalizar L2 para que dot product = cosine similarity
+    matriz_norm = normalize(matriz_tfidf, norm='l2')
 
     indice_jogos = {nome: idx for idx, nome in enumerate(df['Nome_Jogo'])}
 
-    return matriz_similaridade, indice_jogos
+    return matriz_norm, indice_jogos
 
 
-def recomendar_por_conteudo(nomes_curtidos, df_enriquecido,
-                             matriz_similaridade, indice_jogos,
+def recomendar_por_conteudo(nomes_curtidos, df_jogos,
+                             matriz_norm, indice_jogos,
                              excluir_nomes=None, n=10):
-    """Agrega similaridades dos jogos curtidos e retorna os N mais próximos por conteúdo."""
+    """Agrega similaridades dos jogos curtidos e retorna os N mais próximos por conteúdo.
+
+    Usa dot product das linhas TF-IDF normalizadas (equivalente a cosine similarity)
+    sem materializar a matriz n×n completa em memória.
+    """
     if excluir_nomes is None:
         excluir_nomes = []
 
-    n_jogos = matriz_similaridade.shape[0]
+    n_jogos = matriz_norm.shape[0]
     pontuacoes_agregadas = np.zeros(n_jogos)
 
     curtidos_validos = 0
     for nome in nomes_curtidos:
         if nome in indice_jogos:
             idx = indice_jogos[nome]
-            pontuacoes_agregadas += matriz_similaridade[idx]
+            # Produto escalar de 1 linha contra todas: shape (1, vocab) × (vocab, n) → (n,)
+            sim_row = (matriz_norm[idx] @ matriz_norm.T).toarray().ravel()
+            pontuacoes_agregadas += sim_row
             curtidos_validos += 1
 
     if curtidos_validos == 0:
@@ -64,7 +63,7 @@ def recomendar_por_conteudo(nomes_curtidos, df_enriquecido,
     indices_ordenados = np.argsort(pontuacoes_agregadas)[::-1]
 
     jogos = []
-    df_idx = df_enriquecido.reset_index(drop=True)
+    df_idx = df_jogos.reset_index(drop=True)
     mapa_df = df_idx.set_index('Nome_Jogo')
 
     for idx in indices_ordenados:
@@ -82,15 +81,15 @@ def recomendar_por_conteudo(nomes_curtidos, df_enriquecido,
         if nome in mapa_df.index:
             linha = mapa_df.loc[nome]
             jogos.append({
-                'nome':                   nome,
-                'generos':                linha['generos'],
-                'tags':                   linha['tags'],
-                'descricao':              linha['descricao'],
-                'total_horas':            linha.get('total_horas', 0),
-                'total_usuarios_jogaram': linha.get('total_usuarios_jogaram', 0),
-                'pontuacao_ponderada':    float(linha.get('pontuacao_ponderada', 0)),
-                'pontuacao_conteudo':     float(pontuacoes_agregadas[idx]),
-                'motivo':                 '🧠 Baseado no seu gosto',
+                'nome':               nome,
+                'generos':            linha['generos'],
+                'tags':               linha['tags'],
+                'descricao':          linha['descricao'],
+                'positivas':          int(linha.get('positivas', 0)),
+                'total_reviews':      int(linha.get('total_reviews', 0)),
+                'pontuacao_ponderada': float(linha.get('pontuacao_ponderada', 0)),
+                'pontuacao_conteudo': float(pontuacoes_agregadas[idx]),
+                'motivo':             '🧠 Baseado no seu gosto',
             })
 
     # Reordena combinando similaridade (60%) + popularidade (40%)
