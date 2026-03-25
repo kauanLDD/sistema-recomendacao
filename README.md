@@ -6,15 +6,14 @@ Sistema de recomendação de jogos Steam com interface estilo Tinder no terminal
 
 ## Como funciona
 
-O SteamMatch aprende seus gostos enquanto você faz swipe nos jogos. A cada like, o sistema ajusta as recomendações usando três estratégias progressivas:
+O SteamMatch aprende seus gostos enquanto você faz swipe nos jogos. A cada like, o sistema ajusta as recomendações usando duas estratégias progressivas:
 
 | Fase | Critério | Estratégia |
 |------|----------|------------|
 | Início | < 3 likes | Jogos populares (baseline) |
-| Intermediário | 3–7 likes | Similaridade de conteúdo (TF-IDF) |
-| Avançado | ≥ 8 interações e ≥ 3 likes | Híbrido (conteúdo + colaborativo + popularidade) |
+| Personalizado | ≥ 3 likes | Similaridade de conteúdo (TF-IDF) |
 
-A cada 5 likes aparece uma tela de **Match** com seus gêneros favoritos e as melhores recomendações do momento. 30% dos jogos exibidos são escolhas aleatórias para garantir diversidade.
+A cada 5 likes aparece uma tela de **Match** com seus gêneros favoritos e as melhores recomendações do momento. Parte dos jogos exibidos são escolhas aleatórias para garantir diversidade.
 
 ---
 
@@ -24,13 +23,11 @@ A cada 5 likes aparece uma tela de **Match** com seus gêneros favoritos e as me
 steamatch/
 ├── main.py                  # Ponto de entrada
 ├── dados/
-│   ├── steam-200k.csv       # Interações de usuários (200k registros)
-│   └── steam_games.csv      # Metadados dos jogos (~52k jogos)
+│   └── games.csv            # Dataset FronkonGames (não incluído no git)
 ├── modelos/
-│   ├── carregador.py        # Carregamento, merge e popularidade
+│   ├── carregador.py        # Carregamento e preparação dos dados
 │   ├── baseline.py          # Recomendação por popularidade
-│   ├── conteudo.py          # TF-IDF + similaridade cosseno
-│   └── colaborativo.py      # Filtragem colaborativa item-item
+│   └── conteudo.py          # TF-IDF + similaridade cosseno
 └── interface/
     ├── sessao.py            # Gerenciamento da sessão e estratégia
     └── terminal.py          # Interface visual com Rich
@@ -43,8 +40,24 @@ steamatch/
 **Requisitos:** Python 3.10+
 
 ```bash
-pip install pandas numpy scikit-learn scipy rich
+pip install pandas numpy scikit-learn rich
 ```
+
+---
+
+## Dataset
+
+O projeto usa o dataset público do Kaggle:
+
+- [Steam Games Dataset — FronkonGames](https://www.kaggle.com/datasets/fronkongames/steam-games-dataset) (~122k jogos com gêneros, tags, descrição e avaliações)
+
+Após baixar, coloque o arquivo em:
+
+```
+steamatch/dados/games.csv
+```
+
+> O arquivo não está no repositório pois tem 371 MB (acima do limite do GitHub).
 
 ---
 
@@ -62,25 +75,10 @@ python main.py
 
 ---
 
-## Dataset
-
-O projeto usa dois datasets públicos do Kaggle:
-
-- [Steam 200k](https://www.kaggle.com/datasets/tamber/steam-video-games) — comportamento de 200k usuários (compras e horas jogadas)
-- [Steam Games](https://www.kaggle.com/datasets/nikdavis/steam-store-games) — metadados de ~52k jogos (gênero, tags, descrição)
-
----
-
 ## Modelos
 
 **Baseline (popularidade)**
-Pontuação ponderada estilo IMDb que equilibra média de horas com volume de jogadores.
+Pontuação ponderada estilo IMDb que equilibra ratio de avaliações positivas com volume de reviews. Usado enquanto o sistema ainda não conhece seu gosto (< 3 likes).
 
 **Conteúdo (TF-IDF)**
-Vetoriza gêneros, tags e descrição de cada jogo. Gêneros têm peso duplo. Combina similaridade cosseno (60%) com popularidade (40%).
-
-**Colaborativo (item-item)**
-Matriz esparsa de horas jogadas por usuário. Similaridade cosseno entre jogos combinada com popularidade (60%/40%).
-
-**Híbrido**
-Combina os dois modelos com bônus de popularidade: `0.5 × conteúdo + 0.5 × colaborativo + 0.2 × popularidade`, renormalizado entre 0 e 1.
+Vetoriza gêneros, tags e descrição de cada jogo com TF-IDF. Gêneros têm peso duplo. Calcula similaridade via dot product on-demand (sem pré-computar matriz n×n), combinando similaridade de conteúdo (60%) com popularidade (40%). Ativado a partir de 3 likes.
