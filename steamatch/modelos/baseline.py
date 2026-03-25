@@ -22,7 +22,7 @@ def obter_jogos_populares(df_enriquecido, n=50, excluir_nomes=None):
             'total_horas':            linha.get('total_horas', 0),
             'total_usuarios_jogaram': linha.get('total_usuarios_jogaram', 0),
             'pontuacao_ponderada':    linha.get('pontuacao_ponderada', 0),
-            'motivo':                 'Baseado em popularidade',
+            'motivo':                 '📈 Baseado em popularidade',
         })
 
     return jogos
@@ -49,5 +49,5 @@ def obter_jogo_aleatorio(df_enriquecido, excluir_nomes=None):
         'total_horas':            linha.get('total_horas', 0),
         'total_usuarios_jogaram': linha.get('total_usuarios_jogaram', 0),
         'pontuacao_ponderada':    linha.get('pontuacao_ponderada', 0),
-        'motivo':                 'Descoberta aleatória',
+        'motivo':                 '🎲 Exploração aleatória',
     }

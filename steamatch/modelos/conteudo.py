@@ -90,7 +90,7 @@ def recomendar_por_conteudo(nomes_curtidos, df_enriquecido,
                 'total_usuarios_jogaram': linha.get('total_usuarios_jogaram', 0),
                 'pontuacao_ponderada':    float(linha.get('pontuacao_ponderada', 0)),
                 'pontuacao_conteudo':     float(pontuacoes_agregadas[idx]),
-                'motivo':                 'Baseado no seu gosto (conteúdo)',
+                'motivo':                 '🧠 Baseado no seu gosto',
             })
 
     # Reordena combinando similaridade (60%) + popularidade (40%)

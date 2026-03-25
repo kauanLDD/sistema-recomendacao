@@ -83,7 +83,7 @@ def recomendar_colaborativo(nomes_curtidos, matriz_item_item,
                 'total_usuarios_jogaram':  linha.get('total_usuarios_jogaram', 0),
                 'pontuacao_ponderada':     float(linha.get('pontuacao_ponderada', 0)),
                 'pontuacao_colaborativa':  float(pontuacoes_agregadas[idx]),
-                'motivo':                  'Jogado por usuários com gosto similar',
+                'motivo':                  '🤝 Usuários similares',
             })
 
     # Reordena combinando colaborativo (60%) + popularidade (40%)

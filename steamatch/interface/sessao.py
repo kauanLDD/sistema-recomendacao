@@ -45,46 +45,76 @@ class SessaoUsuario:
             return 'popular'
 
     def obter_proximo_jogo(self, modelos: dict) -> dict | None:
-        """Obtém o próximo jogo a exibir usando a estratégia atual, com fallback para baseline."""
-        estrategia = self.decidir_estrategia()
-        df         = modelos['df_enriquecido']
-        excluir    = self.vistos.copy()
+        """Obtém o próximo jogo com progressão gradual: aleatório → popular → modelo."""
+        df      = modelos['df_enriquecido']
+        excluir = self.vistos.copy()
+        total_vistos = len(self.vistos)
 
-        # 30% de chance de exibir um jogo aleatório para diversidade
-        if random.random() < 0.3:
+        # Primeiro jogo sempre aleatório
+        if total_vistos == 0:
             proximo = obter_jogo_aleatorio(df, excluir_nomes=excluir)
-            if proximo is not None:
+            if proximo:
                 self.vistos.append(proximo['nome'])
-                return proximo
+            return proximo
 
-        candidatos: list[dict] = []
+        # Jogos 2-3: majoritariamente aleatório, cresce gradualmente para popular
+        if total_vistos <= 2:
+            peso_popular = total_vistos * 0.1
+            if random.random() > peso_popular:
+                proximo = obter_jogo_aleatorio(df, excluir_nomes=excluir)
+            else:
+                candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+                proximo = candidatos[0] if candidatos else obter_jogo_aleatorio(df, excluir_nomes=excluir)
+            if proximo and proximo['nome'] not in self.vistos:
+                self.vistos.append(proximo['nome'])
+            return proximo
+
+        estrategia = self.decidir_estrategia()
+        proximo = None
 
         if estrategia == 'popular':
-            candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+            if random.random() < 0.3:
+                proximo = obter_jogo_aleatorio(df, excluir_nomes=excluir)
+            else:
+                candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+                proximo = candidatos[0] if candidatos else None
 
         elif estrategia == 'conteudo':
-            candidatos = recomendar_por_conteudo(
-                self.curtidos,
-                df,
-                modelos['matriz_sim'],
-                modelos['indice_jogos'],
-                excluir_nomes=excluir,
-                n=20,
-            )
+            sorteio = random.random()
+            if sorteio < 0.60:
+                candidatos = recomendar_por_conteudo(
+                    self.curtidos, df,
+                    modelos['matriz_sim'], modelos['indice_jogos'],
+                    excluir_nomes=excluir, n=20,
+                )
+                proximo = candidatos[0] if candidatos else None
+            elif sorteio < 0.80:
+                candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+                proximo = candidatos[0] if candidatos else None
+            else:
+                proximo = obter_jogo_aleatorio(df, excluir_nomes=excluir)
 
         elif estrategia == 'hibrido':
-            candidatos = self._combinar_hibrido(modelos, excluir)
+            sorteio = random.random()
+            if sorteio < 0.60:
+                candidatos = self._combinar_hibrido(modelos, excluir)
+                proximo = candidatos[0] if candidatos else None
+            elif sorteio < 0.90:
+                candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+                proximo = candidatos[0] if candidatos else None
+            else:
+                proximo = obter_jogo_aleatorio(df, excluir_nomes=excluir)
 
-        if not candidatos:
+        # Fallback para popular se nenhuma fonte retornou
+        if proximo is None:
             candidatos = obter_jogos_populares(df, n=50, excluir_nomes=excluir)
+            proximo = candidatos[0] if candidatos else None
 
-        if not candidatos:
+        if proximo is None:
             return None
 
-        proximo = candidatos[0]
         if proximo['nome'] not in self.vistos:
             self.vistos.append(proximo['nome'])
-
         return proximo
 
     def _combinar_hibrido(self, modelos: dict, excluir: list[str]) -> list[dict]:
@@ -155,7 +185,7 @@ class SessaoUsuario:
                     'total_usuarios_jogaram': linha.get('total_usuarios_jogaram', 0),
                     'pontuacao_ponderada':    linha.get('pontuacao_ponderada', 0),
                     'pontuacao_hibrida':      pontuacao_final,
-                    'motivo':                 'Híbrido: conteúdo + colaborativo + popularidade',
+                    'motivo':                 '⚡ Modelo híbrido',
                 })
 
         if candidatos_hibridos:
