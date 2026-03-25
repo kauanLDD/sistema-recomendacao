@@ -25,9 +25,10 @@ ARQUIVO_FINAL      = os.path.join(DIR, 'steam_dataset_completo.csv')
 SLEEP_ENTRE_REQS   = 1.5
 CHECKPOINT_INTERVALO = 100
 
-URL_APPLIST_STEAMSPY = 'https://steamspy.com/api.php?request=all'
-URL_APPLIST_STEAM    = 'https://api.steampowered.com/ISteamApps/GetAppList/v0002/?format=json'
+URL_APPLIST_STEAM    = 'https://api.steampowered.com/ISteamApps/GetAppList/v0002/'
+URL_APPLIST_STEAMSPY = 'https://steamspy.com/api.php?request=all&page={page}'
 URL_APPDETAILS       = 'https://store.steampowered.com/api/appdetails'
+STEAMSPY_MAX_PAGES   = 20
 
 
 def normalizar(nome: str) -> str:
@@ -45,36 +46,51 @@ jogos_unicos = df_principal['nome_jogo'].unique().tolist()
 print(f'   {len(jogos_unicos)} jogos únicos encontrados.')
 
 
-# ─── Etapa 2: baixar lista completa de AppIDs da Steam ────────────────────────
+# ─── Etapa 2: baixar lista completa de AppIDs ─────────────────────────────────
 print('\n🌐 Baixando lista de AppIDs...')
 
 appid_por_nome = {}
 fonte_usada = None
 
-# Tenta SteamSpy primeiro (mais confiável)
+# Etapa 2a: Steam API oficial (retorna 100k+ apps em uma requisição)
 try:
-    resp = requests.get(URL_APPLIST_STEAMSPY, timeout=30)
+    resp = requests.get(
+        URL_APPLIST_STEAM,
+        headers={'User-Agent': 'Mozilla/5.0'},
+        timeout=30,
+    )
     resp.raise_for_status()
-    dados_spy = resp.json()
-    # SteamSpy retorna {appid_str: {appid, name, ...}}
-    appid_por_nome = {normalizar(v['name']): v['appid'] for v in dados_spy.values() if v.get('name')}
-    fonte_usada = 'SteamSpy'
+    apps = resp.json()['applist']['apps']
+    appid_por_nome = {normalizar(a['name']): a['appid'] for a in apps if a.get('name')}
+    fonte_usada = 'Steam API v0002'
+    print(f'   ✅ Steam API: {len(appid_por_nome)} apps indexados.')
 except Exception as e:
-    print(f'   ⚠️  SteamSpy falhou ({e}), tentando Steam API...')
+    print(f'   ⚠️  Steam API falhou ({e}), usando SteamSpy com paginação...')
 
-# Fallback: Steam API v0002
+# Etapa 2b: SteamSpy com paginação (fallback — ~1000 apps por página)
 if not appid_por_nome:
-    try:
-        resp = requests.get(URL_APPLIST_STEAM, timeout=30)
-        resp.raise_for_status()
-        apps = resp.json()['applist']['apps']
-        appid_por_nome = {normalizar(a['name']): a['appid'] for a in apps}
-        fonte_usada = 'Steam API v0002'
-    except Exception as e:
-        print(f'   ❌ Steam API também falhou ({e}). Encerrando.')
-        raise SystemExit(1)
+    for page in range(STEAMSPY_MAX_PAGES):
+        try:
+            resp = requests.get(URL_APPLIST_STEAMSPY.format(page=page), timeout=30)
+            resp.raise_for_status()
+            dados = resp.json()
+            if not dados:
+                print(f'   Página {page}: vazia, encerrando paginação.')
+                break
+            novos = {normalizar(v['name']): v['appid'] for v in dados.values() if v.get('name')}
+            appid_por_nome.update(novos)
+            print(f'   Página {page}: +{len(novos)} apps (total: {len(appid_por_nome)})')
+            time.sleep(2)
+        except Exception as e:
+            print(f'   ⚠️  Página {page} falhou ({e}), continuando...')
+            time.sleep(2)
+    fonte_usada = 'SteamSpy (paginado)'
 
-print(f'   {len(appid_por_nome)} apps indexados via {fonte_usada}.')
+if not appid_por_nome:
+    print('   ❌ Nenhuma fonte retornou AppIDs. Encerrando.')
+    raise SystemExit(1)
+
+print(f'\n   Total indexado via {fonte_usada}: {len(appid_por_nome)} apps.')
 
 
 # ─── Etapa 3: mapear nome → AppID ─────────────────────────────────────────────
