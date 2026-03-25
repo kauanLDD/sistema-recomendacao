@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SteamMatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       TELA DE BOAS-VINDAS
+  ═══════════════════════════════════════════ -->
+  <section id="tela-inicio" class="tela ativa">
+    <div class="inicio-conteudo">
+
+      <header class="logo">
+        <span class="logo-icone">🎮</span>
+        <h1 class="logo-titulo">SteamMatch</h1>
+        <p class="logo-subtitulo">Sistema de Recomendação de Jogos</p>
+      </header>
+
+      <p class="inicio-descricao">
+        Dê <strong>like</strong> nos jogos que te interessam e
+        <strong>dislike</strong> nos que não curtir.
+        O sistema aprende com você e vai refinando as recomendações!
+      </p>
+
+      <div class="instrucoes">
+        <div class="instrucao-item">
+          <kbd class="instrucao-tecla">←</kbd>
+          <span>Dislike</span>
+        </div>
+        <div class="instrucao-item">
+          <kbd class="instrucao-tecla">→</kbd>
+          <span>Like</span>
+        </div>
+        <div class="instrucao-item">
+          <kbd class="instrucao-tecla">Q</kbd>
+          <span>Encerrar</span>
+        </div>
+      </div>
+
+      <button id="btn-iniciar" class="btn-primario">
+        Começar
+        <span class="btn-icon" aria-hidden="true">▶</span>
+      </button>
+
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+       TELA PRINCIPAL DE JOGO
+  ═══════════════════════════════════════════ -->
+  <section id="tela-jogo" class="tela oculta">
+
+    <header class="header-jogo">
+      <div class="logo-pequeno" aria-label="SteamMatch">🎮 SteamMatch</div>
+
+      <div class="contadores" role="status" aria-live="polite">
+        <div class="contador">
+          <span class="contador-icone" aria-hidden="true">💚</span>
+          <span class="contador-valor" id="valor-likes">0</span>
+        </div>
+        <div class="contador">
+          <span class="contador-icone" aria-hidden="true">👁</span>
+          <span class="contador-valor" id="valor-vistos">0</span>
+        </div>
+        <div class="contador">
+          <span class="contador-icone" aria-hidden="true">❌</span>
+          <span class="contador-valor" id="valor-dislikes">0</span>
+        </div>
+      </div>
+
+      <div class="estrategia-badge" aria-label="Estratégia atual">
+        <span id="estrategia-texto">🎲 Explorando</span>
+      </div>
+    </header>
+
+    <main class="area-card">
+      <div id="area-card-container">
+
+        <article id="card-jogo" class="card-jogo" aria-label="Card do jogo atual">
+          <header class="card-header">
+            <h2 id="card-nome" class="card-nome"></h2>
+            <div id="card-generos" class="card-generos" aria-label="Gêneros"></div>
+          </header>
+
+          <div class="card-body">
+            <p id="card-descricao" class="card-descricao"></p>
+          </div>
+
+          <footer class="card-footer">
+            <div class="card-avaliacao">
+              <span class="avaliacao-label">Avaliação dos usuários</span>
+              <div class="avaliacao-barra-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div id="card-barra-avaliacao" class="avaliacao-barra"></div>
+              </div>
+              <span id="card-avaliacao-valor" class="avaliacao-valor"></span>
+            </div>
+
+            <div class="card-meta">
+              <span id="card-total-avaliacoes" class="meta-item"></span>
+              <span id="card-fonte" class="meta-fonte"></span>
+            </div>
+
+            <div class="card-motivo">
+              <span id="card-motivo" class="motivo-texto"></span>
+            </div>
+          </footer>
+        </article>
+
+        <div id="overlay-like"    class="overlay-swipe overlay-like"    aria-hidden="true">💚 LIKE</div>
+        <div id="overlay-dislike" class="overlay-swipe overlay-dislike" aria-hidden="true">❌ NOPE</div>
+
+      </div>
+    </main>
+
+    <div class="acoes" role="group" aria-label="Ações">
+      <button id="btn-dislike" class="btn-acao btn-dislike" aria-label="Dislike — tecla seta esquerda">
+        <span class="btn-acao-icone" aria-hidden="true">✕</span>
+        <span class="btn-acao-tecla" aria-hidden="true">←</span>
+      </button>
+      <button id="btn-like" class="btn-acao btn-like" aria-label="Like — tecla seta direita">
+        <span class="btn-acao-icone" aria-hidden="true">♥</span>
+        <span class="btn-acao-tecla" aria-hidden="true">→</span>
+      </button>
+    </div>
+
+    <button id="btn-encerrar" class="btn-encerrar">Encerrar sessão</button>
+
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+       MODAL DE MATCH
+  ═══════════════════════════════════════════ -->
+  <div id="modal-match" class="modal oculto" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="modal-overlay"></div>
+    <div class="modal-conteudo">
+
+      <header class="modal-header">
+        <h2 id="modal-titulo" class="modal-titulo">🎯 MATCH!</h2>
+        <p class="modal-subtitulo">Detectamos seus gêneros favoritos</p>
+      </header>
+
+      <section class="modal-secao">
+        <p class="modal-label">Você curte:</p>
+        <div id="modal-lista-generos" class="modal-lista-generos"></div>
+      </section>
+
+      <section class="modal-secao">
+        <p class="modal-label">Top recomendações agora:</p>
+        <ol id="modal-lista-recomendacoes" class="modal-lista-recomendacoes"></ol>
+      </section>
+
+      <button id="btn-fechar-modal" class="btn-primario">
+        Continuar descobrindo
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       TELA DE RESUMO FINAL
+  ═══════════════════════════════════════════ -->
+  <section id="tela-resumo" class="tela oculta">
+    <div class="resumo-conteudo">
+
+      <header class="resumo-header">
+        <h2 class="resumo-titulo">📊 Sua Sessão</h2>
+      </header>
+
+      <div class="resumo-stats" role="list">
+        <div class="stat-item" role="listitem">
+          <span class="stat-valor" id="resumo-vistos">0</span>
+          <span class="stat-label">vistos</span>
+        </div>
+        <div class="stat-item stat-like" role="listitem">
+          <span class="stat-valor" id="resumo-likes">0</span>
+          <span class="stat-label">💚 curtidos</span>
+        </div>
+        <div class="stat-item stat-dislike" role="listitem">
+          <span class="stat-valor" id="resumo-dislikes">0</span>
+          <span class="stat-label">❌ rejeitados</span>
+        </div>
+      </div>
+
+      <section id="resumo-secao-generos" class="resumo-secao">
+        <h3 class="secao-titulo">Seus gêneros favoritos</h3>
+        <div id="resumo-lista-generos" class="tags-container"></div>
+      </section>
+
+      <section class="resumo-secao">
+        <h3 class="secao-titulo">Top 5 recomendações para você</h3>
+        <ol id="resumo-lista-recomendacoes" class="resumo-recomendacoes-lista"></ol>
+      </section>
+
+      <div class="resumo-acoes">
+        <button id="btn-reiniciar" class="btn-primario">
+          Jogar novamente
+          <span class="btn-icon" aria-hidden="true">🔄</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+
+  <script src="js/dados.js"></script>
+  <script src="js/logica.js"></script>
+  <script src="js/interface.js"></script>
+</body>
+</html>
