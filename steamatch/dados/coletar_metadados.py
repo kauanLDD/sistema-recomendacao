@@ -25,8 +25,9 @@ ARQUIVO_FINAL      = os.path.join(DIR, 'steam_dataset_completo.csv')
 SLEEP_ENTRE_REQS   = 1.5
 CHECKPOINT_INTERVALO = 100
 
-URL_APPLIST    = 'https://api.steampowered.com/ISteamApps/GetAppList/v2/'
-URL_APPDETAILS = 'https://store.steampowered.com/api/appdetails'
+URL_APPLIST_STEAMSPY = 'https://steamspy.com/api.php?request=all'
+URL_APPLIST_STEAM    = 'https://api.steampowered.com/ISteamApps/GetAppList/v0002/?format=json'
+URL_APPDETAILS       = 'https://store.steampowered.com/api/appdetails'
 
 
 def normalizar(nome: str) -> str:
@@ -45,12 +46,35 @@ print(f'   {len(jogos_unicos)} jogos únicos encontrados.')
 
 
 # ─── Etapa 2: baixar lista completa de AppIDs da Steam ────────────────────────
-print('\n🌐 Baixando lista de AppIDs da Steam...')
-resp = requests.get(URL_APPLIST, timeout=30)
-resp.raise_for_status()
-apps = resp.json()['applist']['apps']
-appid_por_nome = {normalizar(a['name']): a['appid'] for a in apps}
-print(f'   {len(appid_por_nome)} apps indexados.')
+print('\n🌐 Baixando lista de AppIDs...')
+
+appid_por_nome = {}
+fonte_usada = None
+
+# Tenta SteamSpy primeiro (mais confiável)
+try:
+    resp = requests.get(URL_APPLIST_STEAMSPY, timeout=30)
+    resp.raise_for_status()
+    dados_spy = resp.json()
+    # SteamSpy retorna {appid_str: {appid, name, ...}}
+    appid_por_nome = {normalizar(v['name']): v['appid'] for v in dados_spy.values() if v.get('name')}
+    fonte_usada = 'SteamSpy'
+except Exception as e:
+    print(f'   ⚠️  SteamSpy falhou ({e}), tentando Steam API...')
+
+# Fallback: Steam API v0002
+if not appid_por_nome:
+    try:
+        resp = requests.get(URL_APPLIST_STEAM, timeout=30)
+        resp.raise_for_status()
+        apps = resp.json()['applist']['apps']
+        appid_por_nome = {normalizar(a['name']): a['appid'] for a in apps}
+        fonte_usada = 'Steam API v0002'
+    except Exception as e:
+        print(f'   ❌ Steam API também falhou ({e}). Encerrando.')
+        raise SystemExit(1)
+
+print(f'   {len(appid_por_nome)} apps indexados via {fonte_usada}.')
 
 
 # ─── Etapa 3: mapear nome → AppID ─────────────────────────────────────────────
