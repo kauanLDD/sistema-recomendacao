@@ -6,11 +6,7 @@ from sklearn.preprocessing import normalize
 
 
 def construir_modelo_conteudo(df_jogos):
-    """Constrói a matriz TF-IDF normalizada. Retorna (matriz_tfidf_norm, indice_jogos).
-
-    Não pré-computa a matriz de similaridade completa (O(n²) memória).
-    A similaridade é calculada on-demand via dot product em recomendar_por_conteudo().
-    """
+    """Constrói a matriz TF-IDF normalizada. Retorna (matriz_norm, indice_jogos)."""
     df = df_jogos.reset_index(drop=True)
 
     textos = df['conteudo'].fillna('').astype(str).tolist()
@@ -23,7 +19,7 @@ def construir_modelo_conteudo(df_jogos):
     )
     matriz_tfidf = vetorizador.fit_transform(textos)
 
-    # Normalizar L2 para que dot product = cosine similarity
+    # L2 norm: dot product = cosine similarity
     matriz_norm = normalize(matriz_tfidf, norm='l2')
 
     indice_jogos = {nome: idx for idx, nome in enumerate(df['Nome_Jogo'])}
@@ -34,11 +30,7 @@ def construir_modelo_conteudo(df_jogos):
 def recomendar_por_conteudo(nomes_curtidos, df_jogos,
                              matriz_norm, indice_jogos,
                              excluir_nomes=None, n=10):
-    """Agrega similaridades dos jogos curtidos e retorna os N mais próximos por conteúdo.
-
-    Usa dot product das linhas TF-IDF normalizadas (equivalente a cosine similarity)
-    sem materializar a matriz n×n completa em memória.
-    """
+    """Retorna os N jogos mais similares aos curtidos via dot product TF-IDF normalizado."""
     if excluir_nomes is None:
         excluir_nomes = []
 
@@ -49,7 +41,7 @@ def recomendar_por_conteudo(nomes_curtidos, df_jogos,
     for nome in nomes_curtidos:
         if nome in indice_jogos:
             idx = indice_jogos[nome]
-            # Produto escalar de 1 linha contra todas: shape (1, vocab) × (vocab, n) → (n,)
+            # cosine similarity on-demand: 1 linha × todas
             sim_row = (matriz_norm[idx] @ matriz_norm.T).toarray().ravel()
             pontuacoes_agregadas += sim_row
             curtidos_validos += 1
@@ -89,10 +81,10 @@ def recomendar_por_conteudo(nomes_curtidos, df_jogos,
                 'total_reviews':      int(linha.get('total_reviews', 0)),
                 'pontuacao_ponderada': float(linha.get('pontuacao_ponderada', 0)),
                 'pontuacao_conteudo': float(pontuacoes_agregadas[idx]),
-                'motivo':             '🧠 Baseado no seu gosto',
+                'motivo':             'Baseado no seu gosto',
             })
 
-    # Reordena combinando similaridade (60%) + popularidade (40%)
+    # Reordena: 60% similaridade + 40% popularidade
     if len(jogos) > 1:
         sims = np.array([j['pontuacao_conteudo']  for j in jogos])
         pops = np.array([j['pontuacao_ponderada'] for j in jogos])

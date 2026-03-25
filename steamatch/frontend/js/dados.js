@@ -1,8 +1,4 @@
-/**
- * dados.js — Jogos mockados para o frontend SteamMatch
- * 20 jogos cobrindo: Action, FPS, RPG, Indie, Strategy,
- * Adventure, Puzzle, Horror, Sports, Simulation, Roguelike
- */
+/** dados.js — 20 jogos mockados para o frontend SteamMatch */
 
 const JOGOS = [
   {

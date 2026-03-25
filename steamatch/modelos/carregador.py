@@ -1,15 +1,7 @@
-"""Carrega e prepara os dados do games.csv (FronkonGames) para o SteamMatch.
+"""Carrega e prepara games.csv para o SteamMatch.
 
-Nota sobre o dataset: as colunas do CSV estão deslocadas em +1 a partir da
-posição 8 (há uma coluna extra "DLC count" não declarada no header). Por isso
-os nomes usados no read_csv não correspondem ao conteúdo semântico esperado.
-Mapeamento real após inspeção empírica:
-  CSV "Supported languages"  → descrição do jogo (About the game)
-  CSV "Tags"                 → gêneros do jogo  (Genres)
-  CSV "Screenshots"          → tags Steam do usuário (Steam Tags)
-  CSV "Negative"             → contagem de avaliações positivas
-  CSV "Score rank"           → contagem de avaliações negativas
-  CSV "Notes"                → número de recomendações Steam
+Nota: colunas do CSV deslocadas em +1 a partir da posição 8 (coluna extra
+'DLC count' nao declarada no header). Ver mapeamento em colunas_csv abaixo.
 """
 
 import pandas as pd
@@ -34,11 +26,11 @@ def carregar_dados(caminho_dados='./dados'):
         transient=False,
     ) as progresso:
 
-        tarefa = progresso.add_task("🔄 Carregando games.csv...", total=100)
+        tarefa = progresso.add_task("Carregando games.csv...", total=100)
 
         caminho_csv = f"{caminho_dados}/games.csv"
 
-        # Colunas pelo nome real no header (com o deslocamento documentado acima)
+        # Colunas com deslocamento no header
         colunas_csv = [
             'Name',
             'Supported languages',   # = About the game (descrição)
@@ -98,7 +90,7 @@ def carregar_dados(caminho_dados='./dados'):
         C = float(R.mean())
         df['pontuacao_ponderada'] = (v / (v + m)) * R + (m / (v + m)) * C
 
-        # Campo de conteúdo para TF-IDF: gêneros (peso duplo) + tags + descrição
+        # Campo TF-IDF: generos (peso duplo) + tags + descricao
         df['conteudo'] = (
             df['generos'] + ' ' + df['generos'] + ' ' +
             df['tags'] + ' ' +
@@ -114,8 +106,8 @@ def carregar_dados(caminho_dados='./dados'):
         (df['tags'] != 'desconhecido')
     ).sum()
 
-    console.print(f"✅ Jogos carregados: [bold green]{total_jogos:,}[/bold green]")
-    console.print(f"✅ Com metadados completos: [bold cyan]{com_metadados:,}[/bold cyan]")
-    console.print("✅ Pronto para recomendação")
+    console.print(f"Jogos carregados: [bold green]{total_jogos:,}[/bold green]")
+    console.print(f"Com metadados completos: [bold cyan]{com_metadados:,}[/bold cyan]")
+    console.print("Pronto para recomendacao")
 
     return df

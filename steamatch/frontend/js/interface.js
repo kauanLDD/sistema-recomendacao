@@ -1,7 +1,4 @@
-/**
- * interface.js — Manipulação do DOM, eventos e animações do SteamMatch
- * Depende de: dados.js (JOGOS) e logica.js (sessao)
- */
+/** interface.js — DOM, eventos e animações do SteamMatch */
 
 /* ════════════════════════════════════════════════════════
    REFERÊNCIAS DO DOM

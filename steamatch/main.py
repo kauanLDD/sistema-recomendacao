@@ -27,7 +27,7 @@ def carregar_todos_os_modelos(caminho_dados: str = './dados') -> tuple:
     try:
         df_jogos = carregar_dados(caminho_dados)
     except FileNotFoundError as erro:
-        console.print(f'\n[bold red]❌ Arquivo não encontrado:[/bold red] {erro}')
+        console.print(f'\n[bold red]Arquivo nao encontrado:[/bold red] {erro}')
         console.print(
             '[yellow]Verifique se o arquivo games.csv '
             f'está em [bold]{caminho_dados}/[/bold][/yellow]\n'
@@ -42,13 +42,13 @@ def carregar_todos_os_modelos(caminho_dados: str = './dados') -> tuple:
         console=console,
         transient=False,
     ) as progresso:
-        tarefa = progresso.add_task('🧠 Construindo modelo TF-IDF...', total=100)
+        tarefa = progresso.add_task('Construindo modelo TF-IDF...', total=100)
 
         matriz_sim, indice_jogos = construir_modelo_conteudo(df_jogos)
         progresso.update(tarefa, advance=100)
 
     total_jogos = len(df_jogos)
-    console.print(f'✅ Pronto! [bold green]{total_jogos}[/bold green] jogos carregados.\n')
+    console.print(f'Pronto! [bold green]{total_jogos}[/bold green] jogos carregados.\n')
 
     modelos = {
         'df_jogos':     df_jogos,

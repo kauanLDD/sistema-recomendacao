@@ -9,7 +9,7 @@ def recomendar_mais_avaliados(df_jogos, n=10, excluir_nomes=None):
     df_filtrado = df_jogos[~df_jogos['Nome_Jogo'].isin(excluir_nomes)].copy()
     df_ordenado = df_filtrado.sort_values('total_reviews', ascending=False)
 
-    return _montar_lista(df_ordenado, n, motivo='📈 Baseado em popularidade')
+    return _montar_lista(df_ordenado, n, motivo='Baseado em popularidade')
 
 
 def recomendar_melhor_avaliados(df_jogos, n=10, excluir_nomes=None):
@@ -23,7 +23,7 @@ def recomendar_melhor_avaliados(df_jogos, n=10, excluir_nomes=None):
     ].copy()
     df_ordenado = df_filtrado.sort_values('ratio_positivo', ascending=False)
 
-    return _montar_lista(df_ordenado, n, motivo='📈 Baseado em popularidade')
+    return _montar_lista(df_ordenado, n, motivo='Baseado em popularidade')
 
 
 def recomendar_pontuacao_ponderada(df_jogos, n=10, excluir_nomes=None):
@@ -34,7 +34,7 @@ def recomendar_pontuacao_ponderada(df_jogos, n=10, excluir_nomes=None):
     df_filtrado = df_jogos[~df_jogos['Nome_Jogo'].isin(excluir_nomes)].copy()
     df_ordenado = df_filtrado.sort_values('pontuacao_ponderada', ascending=False)
 
-    return _montar_lista(df_ordenado, n, motivo='📈 Baseado em popularidade')
+    return _montar_lista(df_ordenado, n, motivo='Baseado em popularidade')
 
 
 def obter_jogos_populares(df_jogos, n=50, excluir_nomes=None):
@@ -53,7 +53,7 @@ def obter_jogo_aleatorio(df_jogos, excluir_nomes=None):
         return None
 
     linha = df_filtrado.sample(n=1).iloc[0]
-    return _linha_para_dict(linha, motivo='🎲 Exploração aleatória')
+    return _linha_para_dict(linha, motivo='Exploracao aleatoria')
 
 
 def _linha_para_dict(linha, motivo: str) -> dict:

@@ -101,7 +101,7 @@ class SessaoUsuario:
         return proximo
 
     def obter_generos_favoritos_de(self, df_jogos) -> list[tuple]:
-        """Conta gêneros dos curtidos usando o DataFrame de metadados. Retorna lista de tuplas (genero, contagem)."""
+        """Conta generos dos jogos curtidos. Retorna lista de (genero, contagem)."""
         mapa = df_jogos.set_index('Nome_Jogo')['generos'].to_dict()
         contagem = Counter()
 

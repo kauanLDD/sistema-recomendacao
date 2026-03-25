@@ -1,12 +1,4 @@
-/**
- * logica.js — Lógica de recomendação simulada do SteamMatch
- *
- * Progressão da estratégia:
- *   0 interações        → 100% aleatório
- *   1-2 interações      → 80% popular + 20% aleatório
- *   3-7 curtidas        → filtrar por gênero mais curtido (conteúdo)
- *   8+ interações       → ordenar por avaliação dentro do gênero (conteúdo avançado)
- */
+/** logica.js — Lógica de recomendação simulada do SteamMatch */
 
 const sessao = {
   curtidos:   [],   // ids dos jogos curtidos
@@ -48,17 +40,17 @@ const sessao = {
 
       case 'aleatorio': {
         jogo   = _sortear(disponiveis);
-        motivo = '🎲 Exploração aleatória';
+        motivo = 'Exploração aleatória';
         break;
       }
 
       case 'popular': {
         if (Math.random() < 0.2) {
           jogo   = _sortear(disponiveis);
-          motivo = '🎲 Exploração aleatória';
+          motivo = 'Exploração aleatória';
         } else {
           jogo   = _maiorAvaliacao(disponiveis, 'total_avaliacoes');
-          motivo = '📈 Baseado em popularidade';
+          motivo = 'Baseado em popularidade';
         }
         break;
       }
@@ -72,13 +64,13 @@ const sessao = {
         const sorteio = Math.random();
         if (porGen.length > 0 && sorteio < 0.60) {
           jogo   = _sortear(porGen);
-          motivo = '🧠 Baseado no seu gosto';
+          motivo = 'Baseado no seu gosto';
         } else if (sorteio < 0.80) {
           jogo   = _maiorAvaliacao(disponiveis, 'total_avaliacoes');
-          motivo = '📈 Baseado em popularidade';
+          motivo = 'Baseado em popularidade';
         } else {
           jogo   = _sortear(disponiveis);
-          motivo = '🎲 Exploração aleatória';
+          motivo = 'Exploração aleatória';
         }
         break;
       }
@@ -91,7 +83,7 @@ const sessao = {
 
         const pool = porGen.length > 0 ? porGen : disponiveis;
         jogo   = _maiorAvaliacao(pool, 'avaliacao');
-        motivo = '🧠 Baseado no seu gosto';
+        motivo = 'Baseado no seu gosto';
         break;
       }
     }
