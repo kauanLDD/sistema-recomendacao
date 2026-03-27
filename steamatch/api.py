@@ -90,10 +90,7 @@ def proximo_jogo():
 
 @app.post('/api/recomendar')
 def recomendar():
-    """Retorna N recomendacoes usando a estrategia especificada.
-
-    Body: { estrategia: 'aleatorio|popular|conteudo', jogos: [...], excluir: [...], n: 10 }
-    """
+    """Retorna N recomendacoes por estrategia: aleatorio | popular | conteudo."""
     body       = request.json or {}
     estrategia = body.get('estrategia', 'popular')
     jogos      = body.get('jogos', [])

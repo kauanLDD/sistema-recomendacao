@@ -6,13 +6,12 @@ const sessao = {
   curtidos:   [],
   rejeitados: [],
   vistos:     [],
-  _generos:   {},   // { genero: contagem } acumulado dos curtidos
+  _generos:   {},
 
   get totalInteracoes() {
     return this.curtidos.length + this.rejeitados.length;
   },
 
-  /* Estrategia local — so decide qual parametro mandar para a API */
   decidirEstrategia() {
     const n = this.totalInteracoes;
     const c = this.curtidos.length;
@@ -21,7 +20,6 @@ const sessao = {
     return 'conteudo';
   },
 
-  /* Proximo jogo via /api/proximo (replica logica exata do terminal) */
   async obterProximoJogo() {
     const resp = await fetch(`${API}/proximo`, {
       method:  'POST',
@@ -49,14 +47,12 @@ const sessao = {
     if (!this.rejeitados.includes(nome)) this.rejeitados.push(nome);
   },
 
-  /* Generos favoritos ordenados por frequencia (calculado localmente) */
   obterGenerosFavoritos() {
     return Object.entries(this._generos)
       .sort((a, b) => b[1] - a[1])
       .map(([g]) => g);
   },
 
-  /* N recomendacoes via /api/recomendar */
   async obterRecomendacoes(n = 5) {
     const estrategia = this.curtidos.length >= 3 ? 'conteudo' : 'popular';
     const resp = await fetch(`${API}/recomendar`, {

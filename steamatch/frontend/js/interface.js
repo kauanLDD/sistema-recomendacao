@@ -103,7 +103,6 @@ function renderizarCard(jogo) {
   $overlayLike.style.opacity    = '0';
   $overlayDislike.style.opacity = '0';
 
-  /* Reinicia animação de entrada */
   const $card = document.getElementById('card-jogo');
   $card.style.animation = 'none';
   void $card.offsetWidth;
@@ -236,7 +235,6 @@ async function encerrarSessao() {
   document.getElementById('resumo-likes').textContent    = sessao.curtidos.length;
   document.getElementById('resumo-dislikes').textContent = sessao.rejeitados.length;
 
-  /* Gêneros favoritos (calculados localmente) */
   const generos = sessao.obterGenerosFavoritos();
   const $secaoGen = document.getElementById('resumo-secao-generos');
   if (generos.length > 0) {
@@ -248,7 +246,6 @@ async function encerrarSessao() {
     $secaoGen.style.display = 'none';
   }
 
-  /* Mostra a tela com loading e preenche as recomendações quando chegarem */
   const $listaRec = document.getElementById('resumo-lista-recomendacoes');
   $listaRec.innerHTML = '<li style="color:var(--texto-secundario)">Carregando recomendações...</li>';
   mostrarTela('resumo');
