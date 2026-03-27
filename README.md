@@ -1,6 +1,6 @@
 # 🎮 SteamMatch
 
-Sistema de recomendação de jogos Steam com interface estilo Tinder no terminal.
+Sistema de recomendação de jogos Steam com interface estilo Tinder — disponível no terminal (Python) e no navegador (HTML+CSS+JS).
 
 ---
 
@@ -21,16 +21,24 @@ A cada 5 likes aparece uma tela de **Match** com seus gêneros favoritos e as me
 
 ```
 steamatch/
-├── main.py                  # Ponto de entrada
+├── main.py                      # Ponto de entrada (terminal)
+├── exportar_dados_frontend.py   # Gera dados.js a partir do games.csv
 ├── dados/
-│   └── games.csv            # Dataset FronkonGames (não incluído no git)
+│   └── games.csv                # Dataset FronkonGames (não incluído no git)
 ├── modelos/
-│   ├── carregador.py        # Carregamento e preparação dos dados
-│   ├── baseline.py          # Recomendação por popularidade
-│   └── conteudo.py          # TF-IDF + similaridade cosseno
-└── interface/
-    ├── sessao.py            # Gerenciamento da sessão e estratégia
-    └── terminal.py          # Interface visual com Rich
+│   ├── carregador.py            # Carregamento e preparação dos dados
+│   ├── baseline.py              # Recomendação por popularidade
+│   └── conteudo.py              # TF-IDF + similaridade cosseno
+├── interface/
+│   ├── sessao.py                # Gerenciamento da sessão e estratégia
+│   └── terminal.py              # Interface visual com Rich
+└── frontend/
+    ├── index.html               # Interface web (abre direto no navegador)
+    ├── css/style.css
+    └── js/
+        ├── dados.js             # Jogos (mock ou exportados do dataset)
+        ├── logica.js            # Lógica de recomendação simulada
+        └── interface.js         # DOM, eventos e animações
 ```
 
 ---
@@ -63,15 +71,30 @@ steamatch/dados/games.csv
 
 ## Uso
 
+### Terminal
+
 ```bash
 cd steamatch
 python main.py
 ```
 
 **Controles:**
-- `L` — Like 💚
-- `D` — Dislike ❌
+- `L` — Like
+- `D` — Dislike
 - `Q` — Sair e ver resumo final
+
+### Frontend web
+
+Abra `steamatch/frontend/index.html` diretamente no navegador. Por padrão usa 20 jogos mockados.
+
+**Para usar os dados reais do dataset:**
+
+```bash
+cd steamatch
+python exportar_dados_frontend.py
+```
+
+Isso gera um novo `dados.js` com os 300 melhores jogos do `games.csv`. Depois é só abrir o `index.html` normalmente.
 
 ---
 

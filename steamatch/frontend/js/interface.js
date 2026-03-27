@@ -1,8 +1,4 @@
-/** interface.js — DOM, eventos e animações do SteamMatch */
 
-/* ════════════════════════════════════════════════════════
-   REFERÊNCIAS DO DOM
-════════════════════════════════════════════════════════ */
 const $telas = {
   inicio : document.getElementById('tela-inicio'),
   jogo   : document.getElementById('tela-jogo'),
@@ -28,12 +24,9 @@ const $btnReiniciar    = document.getElementById('btn-reiniciar');
 
 /* Estado local */
 let jogoAtual  = null;
-let bloqueado  = false;   // impede duplo-clique durante animação
+let bloqueado  = false;  
 
 
-/* ════════════════════════════════════════════════════════
-   UTILITÁRIOS
-════════════════════════════════════════════════════════ */
 function formatarNumero(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)     return Math.round(n / 1_000) + 'K';
@@ -67,9 +60,6 @@ function criarTag(texto, classe = 'tag-genero') {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   RENDERIZAR CARD
-════════════════════════════════════════════════════════ */
 function renderizarCard(jogo) {
   /* Nome */
   document.getElementById('card-nome').textContent = jogo.nome;
@@ -118,9 +108,6 @@ function renderizarCard(jogo) {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   ATUALIZAR BADGE DE ESTRATÉGIA
-════════════════════════════════════════════════════════ */
 const NOMES_ESTRATEGIA = {
   aleatorio          : '🎲 Explorando',
   popular            : '📈 Por popularidade',
@@ -134,9 +121,6 @@ function atualizarEstrategia() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   CARREGAR PRÓXIMO JOGO
-════════════════════════════════════════════════════════ */
 function carregarProximoJogo() {
   jogoAtual = sessao.obterProximoJogo();
 
@@ -151,9 +135,7 @@ function carregarProximoJogo() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   AÇÕES: LIKE E DISLIKE
-════════════════════════════════════════════════════════ */
+
 function executarLike() {
   if (bloqueado || !jogoAtual) return;
   bloqueado = true;
@@ -194,9 +176,7 @@ function executarDislike() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   MODAL DE MATCH
-════════════════════════════════════════════════════════ */
+
 const MEDALHAS = ['🥇', '🥈', '🥉'];
 
 function exibirModalMatch() {
@@ -233,9 +213,6 @@ function fecharModalMatch() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   TELA DE RESUMO FINAL
-════════════════════════════════════════════════════════ */
 function encerrarSessao() {
   const generos       = sessao.obterGenerosFavoritos();
   const recomendacoes = sessao.obterRecomendacoes(5);
@@ -285,9 +262,6 @@ function encerrarSessao() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   INICIAR SESSÃO
-════════════════════════════════════════════════════════ */
 function iniciarSessao() {
   sessao.reiniciar();
   $valorLikes.textContent    = '0';
@@ -298,9 +272,7 @@ function iniciarSessao() {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   EVENTOS DE CLIQUE
-════════════════════════════════════════════════════════ */
+
 $btnIniciar    .addEventListener('click', iniciarSessao);
 $btnLike       .addEventListener('click', executarLike);
 $btnDislike    .addEventListener('click', executarDislike);
@@ -312,9 +284,6 @@ $btnReiniciar  .addEventListener('click', iniciarSessao);
 document.querySelector('.modal-overlay').addEventListener('click', fecharModalMatch);
 
 
-/* ════════════════════════════════════════════════════════
-   EVENTOS DE TECLADO
-════════════════════════════════════════════════════════ */
 document.addEventListener('keydown', e => {
   const jogoAtivo = $telas.jogo.classList.contains('ativa');
   const modalAberto = $modal.classList.contains('visivel');
