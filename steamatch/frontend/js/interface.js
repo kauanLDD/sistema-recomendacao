@@ -1,4 +1,6 @@
+/** interface.js — DOM, eventos e animações do SteamMatch */
 
+/* DOM */
 const $telas = {
   inicio : document.getElementById('tela-inicio'),
   jogo   : document.getElementById('tela-jogo'),
@@ -22,11 +24,11 @@ const $btnEncerrar     = document.getElementById('btn-encerrar');
 const $btnFecharModal  = document.getElementById('btn-fechar-modal');
 const $btnReiniciar    = document.getElementById('btn-reiniciar');
 
-/* Estado local */
-let jogoAtual  = null;
-let bloqueado  = false;  
+let jogoAtual = null;
+let bloqueado = false;
 
 
+/* Utilitários */
 function formatarNumero(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)     return Math.round(n / 1_000) + 'K';
@@ -35,16 +37,14 @@ function formatarNumero(n) {
 
 function mostrarTela(nome) {
   Object.entries($telas).forEach(([key, el]) => {
-    const ativa = key === nome;
-    el.classList.toggle('ativa',  ativa);
-    el.classList.toggle('oculta', !ativa);
+    el.classList.toggle('ativa',  key === nome);
+    el.classList.toggle('oculta', key !== nome);
   });
 }
 
 function animarContador(elemento, valor) {
   elemento.textContent = valor;
   elemento.classList.remove('bounce');
-  /* reflow para reiniciar a animação CSS */
   void elemento.offsetWidth;
   elemento.classList.add('bounce');
   elemento.addEventListener('animationend', () =>
@@ -59,23 +59,30 @@ function criarTag(texto, classe = 'tag-genero') {
   return span;
 }
 
+function mostrarErroCard(msg) {
+  const $card = document.getElementById('card-jogo');
+  $card.innerHTML = `
+    <div style="text-align:center;padding:3rem 2rem;color:var(--vermelho-dislike)">
+      <p style="font-size:2rem;margin-bottom:1rem">⚠️</p>
+      <p style="font-weight:600;margin-bottom:.5rem">Erro de conexão</p>
+      <p style="color:var(--texto-secundario);font-size:.9rem">${msg}</p>
+    </div>`;
+  bloqueado = false;
+}
 
+
+/* Renderizar card */
 function renderizarCard(jogo) {
-  /* Nome */
   document.getElementById('card-nome').textContent = jogo.nome;
 
-  /* Gêneros */
   const $generos = document.getElementById('card-generos');
   $generos.innerHTML = '';
   jogo.generos.forEach(g => $generos.appendChild(criarTag(g)));
 
-  /* Descrição */
   document.getElementById('card-descricao').textContent = jogo.descricao;
 
-  /* Barra de avaliação — anima após pequeno delay */
   const $barra = document.getElementById('card-barra-avaliacao');
   $barra.style.width = '0%';
-
   if (jogo.avaliacao >= 80) {
     $barra.style.background = 'linear-gradient(90deg, #4caf50, #81c784)';
   } else if (jogo.avaliacao >= 60) {
@@ -83,24 +90,20 @@ function renderizarCard(jogo) {
   } else {
     $barra.style.background = 'linear-gradient(90deg, #f44336, #e57373)';
   }
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      $barra.style.width = jogo.avaliacao + '%';
-    });
-  });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $barra.style.width = jogo.avaliacao + '%';
+  }));
 
   document.getElementById('card-avaliacao-valor').textContent = jogo.avaliacao + '%';
   document.getElementById('card-total-avaliacoes').textContent =
     formatarNumero(jogo.total_avaliacoes) + ' avaliações';
-  document.getElementById('card-fonte').textContent   = jogo.fonte;
-  document.getElementById('card-motivo').textContent  = jogo.motivo || '';
+  document.getElementById('card-fonte').textContent  = jogo.fonte;
+  document.getElementById('card-motivo').textContent = jogo.motivo || '';
 
-  /* Resetar overlays */
   $overlayLike.style.opacity    = '0';
   $overlayDislike.style.opacity = '0';
 
-  /* Resetar animação de entrada do card */
+  /* Reinicia animação de entrada */
   const $card = document.getElementById('card-jogo');
   $card.style.animation = 'none';
   void $card.offsetWidth;
@@ -108,11 +111,11 @@ function renderizarCard(jogo) {
 }
 
 
+/* Badge de estratégia */
 const NOMES_ESTRATEGIA = {
-  aleatorio          : '🎲 Explorando',
-  popular            : '📈 Por popularidade',
-  conteudo           : '🧠 Pelo seu gosto',
-  conteudo_avancado  : '🧠 Modo avançado',
+  aleatorio : '🎲 Explorando',
+  popular   : '📈 Por popularidade',
+  conteudo  : '🧠 Pelo seu gosto',
 };
 
 function atualizarEstrategia() {
@@ -121,11 +124,18 @@ function atualizarEstrategia() {
 }
 
 
-function carregarProximoJogo() {
-  jogoAtual = sessao.obterProximoJogo();
+/* Carregar próximo jogo */
+async function carregarProximoJogo() {
+  bloqueado = true;
+  try {
+    jogoAtual = await sessao.obterProximoJogo();
+  } catch {
+    mostrarErroCard('Verifique se o servidor está rodando: python api.py');
+    return;
+  }
 
   if (!jogoAtual) {
-    encerrarSessao();
+    await encerrarSessao();
     return;
   }
 
@@ -135,7 +145,7 @@ function carregarProximoJogo() {
 }
 
 
-
+/* Like */
 function executarLike() {
   if (bloqueado || !jogoAtual) return;
   bloqueado = true;
@@ -143,21 +153,22 @@ function executarLike() {
   $overlayLike.style.opacity = '1';
   $cardContainer.classList.add('animando-like');
 
-  sessao.registrarCurtida(jogoAtual.id);
+  sessao.registrarCurtida(jogoAtual.nome, jogoAtual.generos);
   animarContador($valorLikes,  sessao.curtidos.length);
   animarContador($valorVistos, sessao.vistos.length);
 
-  setTimeout(() => {
+  setTimeout(async () => {
     $cardContainer.classList.remove('animando-like');
-
     if (sessao.curtidos.length > 0 && sessao.curtidos.length % 5 === 0) {
-      exibirModalMatch();
+      await exibirModalMatch();
     } else {
-      carregarProximoJogo();
+      await carregarProximoJogo();
     }
   }, 480);
 }
 
+
+/* Dislike */
 function executarDislike() {
   if (bloqueado || !jogoAtual) return;
   bloqueado = true;
@@ -165,114 +176,119 @@ function executarDislike() {
   $overlayDislike.style.opacity = '1';
   $cardContainer.classList.add('animando-dislike');
 
-  sessao.registrarRejeicao(jogoAtual.id);
+  sessao.registrarRejeicao(jogoAtual.nome);
   animarContador($valorDislikes, sessao.rejeitados.length);
   animarContador($valorVistos,   sessao.vistos.length);
 
-  setTimeout(() => {
+  setTimeout(async () => {
     $cardContainer.classList.remove('animando-dislike');
-    carregarProximoJogo();
+    await carregarProximoJogo();
   }, 480);
 }
 
 
-
+/* Modal de match */
 const MEDALHAS = ['🥇', '🥈', '🥉'];
 
-function exibirModalMatch() {
-  const generos        = sessao.obterGenerosFavoritos().slice(0, 3);
-  const recomendacoes  = sessao.obterRecomendacoes(3);
+async function exibirModalMatch() {
+  const generos = sessao.obterGenerosFavoritos().slice(0, 3);
 
-  /* Gêneros favoritos */
   const $listaGeneros = document.getElementById('modal-lista-generos');
   $listaGeneros.innerHTML = '';
   generos.forEach(g => $listaGeneros.appendChild(criarTag(g, 'modal-genero-tag')));
 
-  /* Recomendações */
   const $listaRec = document.getElementById('modal-lista-recomendacoes');
-  $listaRec.innerHTML = '';
-  recomendacoes.forEach((j, i) => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span class="medalha">${MEDALHAS[i] || '▸'}</span>
-      <span>${j.nome}</span>
-      <span class="rec-genero">${j.generos[0]}</span>
-    `;
-    $listaRec.appendChild(li);
-  });
+  $listaRec.innerHTML = '<li style="color:var(--texto-secundario)">Carregando...</li>';
 
   $modal.classList.remove('oculto');
   $modal.classList.add('visivel');
   document.getElementById('btn-fechar-modal').focus();
+
+  try {
+    const recomendacoes = await sessao.obterRecomendacoes(3);
+    $listaRec.innerHTML = '';
+    recomendacoes.forEach((j, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span class="medalha">${MEDALHAS[i] || '▸'}</span>
+        <span>${j.nome}</span>
+        <span class="rec-genero">${j.generos[0] || ''}</span>
+      `;
+      $listaRec.appendChild(li);
+    });
+  } catch {
+    $listaRec.innerHTML = '<li style="color:var(--texto-secundario)">Não foi possível carregar.</li>';
+  }
 }
 
-function fecharModalMatch() {
+async function fecharModalMatch() {
   $modal.classList.remove('visivel');
   $modal.classList.add('oculto');
-  carregarProximoJogo();
+  await carregarProximoJogo();
 }
 
 
-function encerrarSessao() {
-  const generos       = sessao.obterGenerosFavoritos();
-  const recomendacoes = sessao.obterRecomendacoes(5);
-  const NUMS          = ['🥇', '🥈', '🥉', '4.', '5.'];
+/* Tela de resumo final */
+async function encerrarSessao() {
+  const NUMS = ['🥇', '🥈', '🥉', '4.', '5.'];
 
-  /* Stats */
-  document.getElementById('resumo-vistos').textContent    = sessao.vistos.length;
-  document.getElementById('resumo-likes').textContent     = sessao.curtidos.length;
-  document.getElementById('resumo-dislikes').textContent  = sessao.rejeitados.length;
+  document.getElementById('resumo-vistos').textContent   = sessao.vistos.length;
+  document.getElementById('resumo-likes').textContent    = sessao.curtidos.length;
+  document.getElementById('resumo-dislikes').textContent = sessao.rejeitados.length;
 
-  /* Gêneros favoritos */
+  /* Gêneros favoritos (calculados localmente) */
+  const generos = sessao.obterGenerosFavoritos();
   const $secaoGen = document.getElementById('resumo-secao-generos');
   if (generos.length > 0) {
-    const $listaGen = document.getElementById('resumo-lista-generos');
-    $listaGen.innerHTML = '';
-    generos.slice(0, 5).forEach(g =>
-      $listaGen.appendChild(criarTag(g, 'modal-genero-tag'))
-    );
+    const $lista = document.getElementById('resumo-lista-generos');
+    $lista.innerHTML = '';
+    generos.slice(0, 5).forEach(g => $lista.appendChild(criarTag(g, 'modal-genero-tag')));
     $secaoGen.style.display = '';
   } else {
     $secaoGen.style.display = 'none';
   }
 
-  /* Recomendações */
+  /* Mostra a tela com loading e preenche as recomendações quando chegarem */
   const $listaRec = document.getElementById('resumo-lista-recomendacoes');
-  $listaRec.innerHTML = '';
-
-  if (recomendacoes.length > 0) {
-    recomendacoes.forEach((j, i) => {
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <span class="medalha">${NUMS[i]}</span>
-        <span class="recomendacao-nome">${j.nome}</span>
-        <span class="recomendacao-genero">${j.generos[0]}</span>
-      `;
-      $listaRec.appendChild(li);
-    });
-  } else {
-    const li = document.createElement('li');
-    li.textContent = 'Interaja mais para receber recomendações personalizadas!';
-    li.style.color = 'var(--texto-secundario)';
-    li.style.fontStyle = 'italic';
-    $listaRec.appendChild(li);
-  }
-
+  $listaRec.innerHTML = '<li style="color:var(--texto-secundario)">Carregando recomendações...</li>';
   mostrarTela('resumo');
+
+  try {
+    const recomendacoes = await sessao.obterRecomendacoes(5);
+    $listaRec.innerHTML = '';
+    if (recomendacoes.length > 0) {
+      recomendacoes.forEach((j, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="medalha">${NUMS[i]}</span>
+          <span class="recomendacao-nome">${j.nome}</span>
+          <span class="recomendacao-genero">${j.generos[0] || ''}</span>
+        `;
+        $listaRec.appendChild(li);
+      });
+    } else {
+      $listaRec.innerHTML =
+        '<li style="color:var(--texto-secundario);font-style:italic">Interaja mais para receber recomendações personalizadas!</li>';
+    }
+  } catch {
+    $listaRec.innerHTML =
+      '<li style="color:var(--vermelho-dislike)">Não foi possível carregar recomendações.</li>';
+  }
 }
 
 
-function iniciarSessao() {
+/* Iniciar sessão */
+async function iniciarSessao() {
   sessao.reiniciar();
   $valorLikes.textContent    = '0';
   $valorDislikes.textContent = '0';
   $valorVistos.textContent   = '0';
   mostrarTela('jogo');
-  carregarProximoJogo();
+  await carregarProximoJogo();
 }
 
 
-
+/* Eventos de clique */
 $btnIniciar    .addEventListener('click', iniciarSessao);
 $btnLike       .addEventListener('click', executarLike);
 $btnDislike    .addEventListener('click', executarDislike);
@@ -280,12 +296,12 @@ $btnEncerrar   .addEventListener('click', encerrarSessao);
 $btnFecharModal.addEventListener('click', fecharModalMatch);
 $btnReiniciar  .addEventListener('click', iniciarSessao);
 
-/* Fechar modal clicando no overlay escuro */
 document.querySelector('.modal-overlay').addEventListener('click', fecharModalMatch);
 
 
+/* Teclado */
 document.addEventListener('keydown', e => {
-  const jogoAtivo = $telas.jogo.classList.contains('ativa');
+  const jogoAtivo   = $telas.jogo.classList.contains('ativa');
   const modalAberto = $modal.classList.contains('visivel');
 
   if (jogoAtivo && !modalAberto) {

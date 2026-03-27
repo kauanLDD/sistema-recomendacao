@@ -1,163 +1,82 @@
-/** logica.js — Lógica de recomendação simulada do SteamMatch */
+/** logica.js — Sessao do SteamMatch via API Python */
+
+const API = 'http://localhost:5000/api';
 
 const sessao = {
-  curtidos:   [],   // ids dos jogos curtidos
-  rejeitados: [],   // ids dos jogos rejeitados
-  vistos:     [],   // ids de todos os jogos exibidos
+  curtidos:   [],
+  rejeitados: [],
+  vistos:     [],
+  _generos:   {},   // { genero: contagem } acumulado dos curtidos
 
-  /* ── Getter calculado ──────────────────────────────── */
   get totalInteracoes() {
     return this.curtidos.length + this.rejeitados.length;
   },
 
-  /* ── Decidir qual estratégia usar ──────────────────── */
+  /* Estrategia local — so decide qual parametro mandar para a API */
   decidirEstrategia() {
-    const nInteracoes = this.totalInteracoes;
-    const nCurtidos   = this.curtidos.length;
-
-    if (nInteracoes === 0)                       return 'aleatorio';
-    if (nInteracoes <= 2)                        return 'popular';
-    if (nCurtidos < 3)                           return 'popular';
-    if (nInteracoes >= 8 && nCurtidos >= 3)      return 'conteudo_avancado';
+    const n = this.totalInteracoes;
+    const c = this.curtidos.length;
+    if (n === 0)          return 'aleatorio';
+    if (n <= 2 || c < 3)  return 'popular';
     return 'conteudo';
   },
 
-  /* ── Jogos ainda não exibidos ──────────────────────── */
-  _disponiveis() {
-    return JOGOS.filter(j => !this.vistos.includes(j.id));
+  /* Proximo jogo via /api/proximo (replica logica exata do terminal) */
+  async obterProximoJogo() {
+    const resp = await fetch(`${API}/proximo`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        curtidos:   this.curtidos,
+        rejeitados: this.rejeitados,
+        vistos:     this.vistos,
+      }),
+    });
+    if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+    const jogo = await resp.json();
+    if (jogo) this.vistos.push(jogo.nome);
+    return jogo;
   },
 
-  /* ── Retornar o próximo jogo com motivo ────────────── */
-  obterProximoJogo() {
-    const disponiveis = this._disponiveis();
-    if (disponiveis.length === 0) return null;
-
-    const estrategia = this.decidirEstrategia();
-    let jogo  = null;
-    let motivo = '';
-
-    switch (estrategia) {
-
-      case 'aleatorio': {
-        jogo   = _sortear(disponiveis);
-        motivo = 'Exploração aleatória';
-        break;
-      }
-
-      case 'popular': {
-        if (Math.random() < 0.2) {
-          jogo   = _sortear(disponiveis);
-          motivo = 'Exploração aleatória';
-        } else {
-          jogo   = _maiorAvaliacao(disponiveis, 'total_avaliacoes');
-          motivo = 'Baseado em popularidade';
-        }
-        break;
-      }
-
-      case 'conteudo': {
-        const genFav = this.obterGenerosFavoritos();
-        const porGen = disponiveis.filter(j =>
-          j.generos.some(g => genFav.includes(g))
-        );
-
-        const sorteio = Math.random();
-        if (porGen.length > 0 && sorteio < 0.60) {
-          jogo   = _sortear(porGen);
-          motivo = 'Baseado no seu gosto';
-        } else if (sorteio < 0.80) {
-          jogo   = _maiorAvaliacao(disponiveis, 'total_avaliacoes');
-          motivo = 'Baseado em popularidade';
-        } else {
-          jogo   = _sortear(disponiveis);
-          motivo = 'Exploração aleatória';
-        }
-        break;
-      }
-
-      case 'conteudo_avancado': {
-        const genFav = this.obterGenerosFavoritos();
-        const porGen = disponiveis.filter(j =>
-          j.generos.some(g => genFav.includes(g))
-        );
-
-        const pool = porGen.length > 0 ? porGen : disponiveis;
-        jogo   = _maiorAvaliacao(pool, 'avaliacao');
-        motivo = 'Baseado no seu gosto';
-        break;
-      }
+  registrarCurtida(nome, generos = []) {
+    if (!this.curtidos.includes(nome)) {
+      this.curtidos.push(nome);
+      generos.forEach(g => { this._generos[g] = (this._generos[g] || 0) + 1; });
     }
-
-    if (!jogo) return null;
-
-    this.vistos.push(jogo.id);
-    return { ...jogo, motivo };
   },
 
-  /* ── Registrar interações ──────────────────────────── */
-  registrarCurtida(id) {
-    if (!this.curtidos.includes(id)) this.curtidos.push(id);
+  registrarRejeicao(nome) {
+    if (!this.rejeitados.includes(nome)) this.rejeitados.push(nome);
   },
 
-  registrarRejeicao(id) {
-    if (!this.rejeitados.includes(id)) this.rejeitados.push(id);
-  },
-
-  /* ── Gêneros favoritos ordenados por frequência ────── */
+  /* Generos favoritos ordenados por frequencia (calculado localmente) */
   obterGenerosFavoritos() {
-    const contagem = {};
-    this.curtidos.forEach(id => {
-      const jogo = JOGOS.find(j => j.id === id);
-      if (!jogo) return;
-      jogo.generos.forEach(g => {
-        contagem[g] = (contagem[g] || 0) + 1;
-      });
-    });
-    return Object.entries(contagem)
+    return Object.entries(this._generos)
       .sort((a, b) => b[1] - a[1])
-      .map(([genero]) => genero);
+      .map(([g]) => g);
   },
 
-  /* ── Top N recomendações pontuadas ─────────────────── */
-  obterRecomendacoes(n = 5) {
-    const naoVistos = JOGOS.filter(j => !this.vistos.includes(j.id));
-    const genFav    = this.obterGenerosFavoritos();
-
-    if (genFav.length === 0) {
-      return [...naoVistos]
-        .sort((a, b) => b.avaliacao - a.avaliacao)
-        .slice(0, n);
-    }
-
-    const pontuados = naoVistos.map(jogo => {
-      let score = jogo.avaliacao;
-      jogo.generos.forEach(g => {
-        const idx = genFav.indexOf(g);
-        if (idx !== -1) score += (genFav.length - idx) * 15;
-      });
-      return { ...jogo, _score: score };
+  /* N recomendacoes via /api/recomendar */
+  async obterRecomendacoes(n = 5) {
+    const estrategia = this.curtidos.length >= 3 ? 'conteudo' : 'popular';
+    const resp = await fetch(`${API}/recomendar`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        estrategia,
+        jogos:   this.curtidos,
+        excluir: this.vistos,
+        n,
+      }),
     });
-
-    return pontuados
-      .sort((a, b) => b._score - a._score)
-      .slice(0, n);
+    if (!resp.ok) throw new Error(`Erro ${resp.status}`);
+    return await resp.json();
   },
 
-  /* ── Reiniciar sessão ──────────────────────────────── */
   reiniciar() {
     this.curtidos   = [];
     this.rejeitados = [];
     this.vistos     = [];
+    this._generos   = {};
   },
 };
-
-/* ── Funções auxiliares privadas ───────────────────────── */
-function _sortear(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function _maiorAvaliacao(arr, campo) {
-  return arr.reduce((melhor, atual) =>
-    atual[campo] > melhor[campo] ? atual : melhor
-  );
-}
