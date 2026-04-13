@@ -29,7 +29,7 @@ print('Carregando modelos...')
 _df              = carregar_dados(os.path.join(_DIR, 'dados'))
 _matriz, _indice = construir_modelo_conteudo(_df)
 MODELOS = {'df_jogos': _df, 'matriz_sim': _matriz, 'indice_jogos': _indice}
-print(f'{len(_df)} jogos prontos.\n')
+print(f'{len(_df)} jogos prontos. Iniciando servidor em http://localhost:5000 ...\n')
 
 
 def _fonte_steam(ratio: float) -> str:
