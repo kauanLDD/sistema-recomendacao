@@ -2,7 +2,7 @@
 
 import os
 import sys
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -14,8 +14,15 @@ from interface.sessao import SessaoUsuario
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
 
-app = Flask(__name__)
+_FRONTEND = os.path.join(_DIR, 'frontend')
+
+app = Flask(__name__, static_folder=_FRONTEND, static_url_path='')
 CORS(app)
+
+
+@app.route('/')
+def index():
+    return send_from_directory(_FRONTEND, 'index.html')
 
 # Carrega modelos uma vez na inicializacao
 print('Carregando modelos...')

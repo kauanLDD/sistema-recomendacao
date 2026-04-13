@@ -1,6 +1,6 @@
 /** logica.js — Sessao do SteamMatch via API Python */
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 const sessao = {
   curtidos:   [],
